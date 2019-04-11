@@ -1,0 +1,25 @@
+{
+  "name": "create-qna",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "bin": {
+    "pegg-iac": "./cli/cli.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Enric Soler Rastrollo <contact@enricsoler.dev> (https://enricsoler.dev/)",
+  "license": "ISC",
+  "dependencies": {
+    "@azure/arm-cognitiveservices": "^2.4.2",
+    "superagent": "^5.0.2",
+    "yargs": "^13.2.2"
+  },
+  "devDependencies": {
+    "eslint": "^5.16.0",
+    "eslint-config-airbnb-base": "^13.1.0",
+    "eslint-plugin-import": "^2.16.0"
+  }
+}

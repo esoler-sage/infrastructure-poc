@@ -1,0 +1,136 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "stackName": {
+      "type": "string",
+      "defaultValue": "qna-poc-iac-"
+    },
+    "stackLocation": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]"
+    },
+    "resourceGroupName": {
+      "type": "string",
+      "defaultValue": "Pegg_Dev_EnricRG",
+      "metadata": {
+        "description": "Resource group"
+      }
+    },
+    "qnaMakerName": {
+      "type": "string",
+      "defaultValue": "[concat(parameters('stackName'), 'qna')]",
+      "metadata": {
+        "description": "QnA Maker name"
+      }
+    },
+    "searchServiceName": {
+      "type": "string",
+      "defaultValue": "[concat(parameters('stackName'), 'search')]"
+    },
+    "websiteEndpoint": {
+      "type": "string",
+      "defaultValue": "[concat(parameters('stackName'), 'endpoint')]",
+      "metadata": {
+        "description": "Website Endpoint"
+      }
+    }
+  },
+  "variables": {
+    "cognitiveservicesid": "[concat(resourceGroup().id, '/providers/', 'Microsoft.CognitiveServices/accounts/', parameters('qnaMakerName'))]",
+    "appServicePlanName": "[concat(parameters('stackName'), 'plan')]"
+  },
+  "functions": [],
+  "resources": [
+    {
+      "type": "Microsoft.Search/searchServices",
+      "apiVersion": "2015-08-19",
+      "name": "[parameters('searchServiceName')]",
+      "location": "[parameters('stackLocation')]",
+      "sku": {
+        "name": "standard"
+      },
+      "properties": {
+        "replicaCount": 1,
+        "partitionCount": 1,
+        "hostingMode": "default"
+      }
+    },
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2016-09-01",
+      "name": "[variables('appServicePlanName')]",
+      "location": "[parameters('stackLocation')]",
+      "dependsOn": [],
+      "sku": {
+        "name": "S1"
+      },
+      "properties": {}
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2016-08-01",
+      "name": "[parameters('websiteEndpoint')]",
+      "location": "[parameters('stackLocation')]",
+      "kind": "app",
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]"
+      ],
+      "resources": [
+        {
+          "type": "config",
+          "apiVersion": "2015-08-01",
+          "name": "appsettings",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/Sites', parameters('websiteEndpoint'))]",
+            "[resourceId('Microsoft.Search/searchServices/', parameters('searchServiceName'))]"
+          ],
+          "properties": {
+            "AzureSearchName": "[parameters('searchServiceName')]",
+            "AzureSearchAdminKey": "[listAdminKeys(resourceId('Microsoft.Search/searchServices/', parameters('searchServiceName')), '2015-08-19').primaryKey]",
+            "PrimaryEndpointKey": "[concat(parameters('websiteEndpoint'), '-PrimaryEndpointKey')]",
+            "SecondaryEndpointKey": "[concat(parameters('websiteEndpoint'), '-SecondaryEndpointKey')]",
+            "DefaultAnswer": "No good match found in KB.",
+            "QNAMAKER_EXTENSION_VERSION": "latest"
+          }
+        }
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2017-04-18",
+      "name": "[parameters('qnaMakerName')]",
+      "location": "westus",
+      "sku": {
+        "name": "F0"
+      },
+      "kind": "QnAMaker",
+      "properties": {
+        "apiProperties": {
+          "qnaRuntimeEndpoint": "[concat('https://',reference(resourceId('Microsoft.Web/sites', parameters('websiteEndpoint'))).hostNames[0])]"
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "cognitivekeys": {
+      "type": "object",
+      "value": "[listKeys(variables('cognitiveservicesid'), '2016-02-01-preview')]"
+    },
+    "cognitivekey1": {
+      "type": "string",
+      "value": "[listKeys(variables('cognitiveservicesid'), '2016-02-01-preview').key1]"
+    },
+    "cognitivekey2": {
+      "type": "string",
+      "value": "[listKeys(variables('cognitiveservicesid'), '2016-02-01-preview').key2]"
+    },
+    "endpoint": {
+      "type": "string",
+      "value": "[reference(variables('cognitiveservicesid'), '2016-02-01-preview').endpoint]"
+    }
+  }
+}
